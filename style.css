@@ -1,7 +1,7 @@
 body{
     margin:0;
     overflow:hidden;
-    font-family:Arial, Helvetica, sans-serif;
+    font-family:Segoe UI, Arial, sans-serif;
     background:black;
 }
 
@@ -10,55 +10,75 @@ body{
     position:absolute;
     top:20px;
     left:20px;
-    width:160px;
+
+    width:180px;
     padding:15px;
-    background:rgba(0,0,0,0.5);
+
+    background:rgba(0,0,0,0.55);
+    backdrop-filter:blur(15px);
+
+    border-radius:18px;
+
     border:1px solid rgba(255,255,255,0.1);
-    border-radius:12px;
-    backdrop-filter: blur(10px);
+
+    box-shadow:0 0 20px rgba(255,255,255,0.08);
 }
 
 .planetBtn{
-    display:block;
     width:100%;
-    padding:8px;
-    margin:5px 0;
-    background:rgba(255,255,255,0.05);
-    color:white;
+    margin:6px 0;
+    padding:10px;
+
     border:none;
-    border-radius:8px;
+    border-radius:10px;
+
+    color:white;
+    background:rgba(255,255,255,0.08);
+
     cursor:pointer;
-    transition:0.2s;
+    transition:0.25s;
 }
 
 .planetBtn:hover{
-    background:rgba(255,255,255,0.2);
     transform:scale(1.05);
+    background:rgba(255,255,255,0.2);
 }
 
-/* RIGHT INFO PANEL */
+/* INFO BOX */
 #infoBox{
     position:absolute;
     top:20px;
     right:20px;
-    width:260px;
-    padding:20px;
-    background:rgba(0,0,0,0.6);
-    border:1px solid rgba(255,255,255,0.1);
-    border-radius:15px;
-    backdrop-filter: blur(12px);
+
+    width:340px;
+    min-height:240px;
+
+    padding:22px;
+
+    border-radius:20px;
+
+    background:rgba(0,0,0,0.75);
+    backdrop-filter:blur(18px);
+
     color:white;
+
+    border:2px solid rgba(255,255,255,0.15);
+
+    box-shadow:0 0 30px rgba(255,255,255,0.12);
+
+    transition:0.3s ease;
 }
 
 #planetName{
     margin:0;
-    font-size:22px;
-    color:#00ffff;
+    font-size:30px;
+    text-align:center;
+    letter-spacing:1px;
 }
 
 #planetData{
-    margin-top:10px;
-    font-size:14px;
-    line-height:1.6;
+    margin-top:18px;
+    font-size:16px;
+    line-height:1.8;
     color:#ddd;
 }
