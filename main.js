@@ -2,10 +2,15 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 /* =========================
-   SCENE SETUP
+   SCENE
 ========================= */
 
 const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x000000, 0.002);
+
+/* =========================
+   CAMERA
+========================= */
 
 const camera = new THREE.PerspectiveCamera(
     60,
@@ -14,26 +19,36 @@ const camera = new THREE.PerspectiveCamera(
     5000
 );
 
-camera.position.set(0, 60, 140);
+camera.position.set(0, 60, 160);
+
+/* =========================
+   RENDERER
+========================= */
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
 document.body.appendChild(renderer.domElement);
+
+/* =========================
+   CONTROLS
+========================= */
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
+controls.dampingFactor = 0.05;
 
 /* =========================
-   LIGHTS
+   LIGHTING
 ========================= */
 
-scene.add(new THREE.AmbientLight(0xffffff, 1.4));
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
 
-const sunLight = new THREE.PointLight(0xffffff, 5000, 5000);
+const sunLight = new THREE.PointLight(0xffffff, 5, 500);
 scene.add(sunLight);
 
 /* =========================
-   TEXTURE LOADER
+   TEXTURES
 ========================= */
 
 const loader = new THREE.TextureLoader();
@@ -43,45 +58,84 @@ function tex(file){
 }
 
 /* =========================
-   UI ELEMENTS
+   UI
 ========================= */
 
 const planetList = document.getElementById("planetList");
 const planetName = document.getElementById("planetName");
 const planetData = document.getElementById("planetData");
+const infoBox = document.getElementById("infoBox");
 
 /* =========================
-   CONTROL FLAGS
+   STATE
 ========================= */
 
 let paused = false;
 let selectedPlanet = null;
 
 /* =========================
-   PLANET INFO
+   PLANET DATA
 ========================= */
 
 const planetInfo = {
-    Mercury: {color:"#9e9e9e", discovered:"Ancient times", temp:"167°C", year:"88 days", moons:0},
-    Venus:   {color:"#d4a373", discovered:"Ancient times", temp:"464°C", year:"225 days", moons:0},
-    Earth:   {color:"#2196f3", discovered:"Home planet", temp:"15°C", year:"365 days", moons:1},
-    Mars:    {color:"#ff5722", discovered:"Ancient times", temp:"-63°C", year:"687 days", moons:2},
-    Jupiter: {color:"#ff9800", discovered:"Ancient times", temp:"-145°C", year:"11.86 years", moons:95},
-    Saturn:  {color:"#ffd54f", discovered:"Ancient times", temp:"-178°C", year:"29.4 years", moons:146},
-    Uranus:  {color:"#80deea", discovered:"1781", temp:"-224°C", year:"84 years", moons:27},
-    Neptune: {color:"#3f51b5", discovered:"1846", temp:"-214°C", year:"165 years", moons:14}
+    Mercury:{c:"#aaa",d:"Ancient times",t:"167°C",y:"88 days",m:0},
+    Venus:{c:"#d4a373",d:"Ancient times",t:"464°C",y:"225 days",m:0},
+    Earth:{c:"#4dabf7",d:"Home planet",t:"15°C",y:"365 days",m:1},
+    Mars:{c:"#ff6b4a",d:"Ancient times",t:"-63°C",y:"687 days",m:2},
+    Jupiter:{c:"#f4a261",d:"Ancient times",t:"-145°C",y:"11.8 years",m:95},
+    Saturn:{c:"#ffd166",d:"Ancient times",t:"-178°C",y:"29.4 years",m:146},
+    Uranus:{c:"#90e0ef",d:"1781",t:"-224°C",y:"84 years",m:27},
+    Neptune:{c:"#4361ee",d:"1846",t:"-214°C",y:"165 years",m:14}
 };
 
 /* =========================
-   SUN
+   SUN (GLOW EFFECT)
 ========================= */
 
 const sun = new THREE.Mesh(
-    new THREE.SphereGeometry(10,64,64),
-    new THREE.MeshBasicMaterial({ map: tex("sun.jpg") })
+    new THREE.SphereGeometry(12,64,64),
+    new THREE.MeshBasicMaterial({
+        map: tex("sun.jpg")
+    })
 );
 
 scene.add(sun);
+
+/* Sun glow light */
+const sunGlow = new THREE.PointLight(0xffaa00, 2, 800);
+scene.add(sunGlow);
+
+/* =========================
+   ORBIT PATH (CINEMATIC)
+========================= */
+
+function createOrbit(radius, tilt=0){
+
+    const points = [];
+
+    for(let i=0;i<=256;i++){
+
+        const angle = (i/256)*Math.PI*2;
+
+        const x = Math.cos(angle)*radius;
+        const z = Math.sin(angle)*radius;
+
+        const y = Math.sin(tilt)*Math.sin(angle)*radius*0.12;
+
+        points.push(new THREE.Vector3(x,y,z));
+    }
+
+    const geo = new THREE.BufferGeometry().setFromPoints(points);
+
+    const mat = new THREE.LineBasicMaterial({
+        color:0xffffff,
+        transparent:true,
+        opacity:0.18
+    });
+
+    const line = new THREE.Line(geo,mat);
+    scene.add(line);
+}
 
 /* =========================
    PLANETS
@@ -89,10 +143,12 @@ scene.add(sun);
 
 const planets = [];
 
-function createPlanet(name, size, distance, texture, speed){
+function createPlanet(name,size,dist,texture,speed,tilt){
 
     const orbit = new THREE.Object3D();
     scene.add(orbit);
+
+    createOrbit(dist,tilt);
 
     const mesh = new THREE.Mesh(
         new THREE.SphereGeometry(size,64,64),
@@ -101,18 +157,16 @@ function createPlanet(name, size, distance, texture, speed){
         })
     );
 
-    mesh.position.x = distance;
-    mesh.userData = {name, distance, speed};
+    mesh.position.x = dist;
+    mesh.userData = {name,dist,speed};
 
     orbit.add(mesh);
-    planets.push({mesh, orbit, speed});
+    planets.push({mesh,orbit,speed});
 
-    /* BUTTON */
     const btn = document.createElement("button");
-    btn.className = "planetBtn";
     btn.innerText = name;
-
-    btn.onclick = () => focusPlanet(mesh);
+    btn.className = "planetBtn";
+    btn.onclick = ()=>focusPlanet(mesh);
 
     planetList.appendChild(btn);
 
@@ -120,19 +174,21 @@ function createPlanet(name, size, distance, texture, speed){
 }
 
 /* =========================
-   CREATE PLANETS
+   CREATE SYSTEM
 ========================= */
 
-createPlanet("Mercury",1.5,18,"mercury.jpg",0.04);
-createPlanet("Venus",2.5,28,"venus.jpg",0.02);
+createPlanet("Mercury",1.5,18,"mercury.jpg",0.04,0.03);
+createPlanet("Venus",2.5,28,"venus.jpg",0.02,0.02);
 
-const earth = createPlanet("Earth",2.8,40,"earth.jpg",0.01);
+const earth = createPlanet("Earth",2.8,40,"earth.jpg",0.01,0.01);
 
-createPlanet("Mars",2,55,"mars.jpg",0.008);
-createPlanet("Jupiter",6,80,"jupiter.jpg",0.004);
-const saturn = createPlanet("Saturn",5,110,"saturn.jpg",0.003);
-createPlanet("Uranus",4,145,"uranus.jpg",0.002);
-createPlanet("Neptune",4,180,"neptune.jpg",0.001);
+createPlanet("Mars",2,55,"mars.jpg",0.008,0.04);
+createPlanet("Jupiter",6,80,"jupiter.jpg",0.004,0.01);
+
+const saturn = createPlanet("Saturn",5,110,"saturn.jpg",0.003,0.05);
+
+createPlanet("Uranus",4,145,"uranus.jpg",0.002,0.09);
+createPlanet("Neptune",4,180,"neptune.jpg",0.001,0.03);
 
 /* =========================
    SATURN RING
@@ -147,7 +203,7 @@ const ring = new THREE.Mesh(
     })
 );
 
-ring.rotation.x = Math.PI / 2;
+ring.rotation.x = Math.PI/2;
 saturn.add(ring);
 
 /* =========================
@@ -176,8 +232,8 @@ const mouse = new THREE.Vector2();
 
 window.addEventListener("click",(e)=>{
 
-    mouse.x = (e.clientX/window.innerWidth)*2-1;
-    mouse.y = -(e.clientY/window.innerHeight)*2+1;
+    mouse.x=(e.clientX/window.innerWidth)*2-1;
+    mouse.y=-(e.clientY/window.innerHeight)*2+1;
 
     raycaster.setFromCamera(mouse,camera);
 
@@ -187,54 +243,70 @@ window.addEventListener("click",(e)=>{
 });
 
 /* =========================
-   FOCUS + TOGGLE SYSTEM
+   CINEMATIC FOCUS ANIMATION
 ========================= */
 
 function focusPlanet(mesh){
 
     const name = mesh.userData.name;
 
-    /* TOGGLE OFF */
-    if(selectedPlanet === mesh){
+    if(selectedPlanet===mesh){
 
-        selectedPlanet = null;
-        paused = false;
+        selectedPlanet=null;
+        paused=false;
 
-        planetName.innerText = "Solar System";
-        planetData.innerHTML = "Click a planet to view details";
+        planetName.innerText="Solar System";
+        planetData.innerHTML="Explore the universe";
 
-        document.getElementById("infoBox").style.borderColor =
-        "rgba(255,255,255,0.15)";
-
+        infoBox.style.borderColor="rgba(255,255,255,0.2)";
         return;
     }
 
-    /* SELECT PLANET */
-    selectedPlanet = mesh;
-    paused = true;
+    selectedPlanet=mesh;
+    paused=true;
 
-    const info = planetInfo[name];
+    const info=planetInfo[name];
 
-    planetName.innerText = name;
+    planetName.innerText=name;
 
-    planetData.innerHTML = `
-        <b>Discovered:</b> ${info.discovered}<br><br>
-        <b>Temperature:</b> ${info.temp}<br><br>
-        <b>Year Length:</b> ${info.year}<br><br>
-        <b>Natural Satellites:</b> ${info.moons}
+    planetData.innerHTML=`
+        <b>Discovered:</b> ${info.d}<br><br>
+        <b>Temperature:</b> ${info.t}<br><br>
+        <b>Year Length:</b> ${info.y}<br><br>
+        <b>Natural Satellites:</b> ${info.m}
     `;
 
-    document.getElementById("infoBox").style.borderColor =
-    info.color;
+    infoBox.style.borderColor=info.c;
 
-    const pos = mesh.getWorldPosition(new THREE.Vector3());
+    const target=mesh.getWorldPosition(new THREE.Vector3());
 
-    camera.position.set(pos.x+20,pos.y+10,pos.z+20);
-    controls.target.copy(pos);
+    /* SMOOTH CAMERA MOVE */
+    const startPos=camera.position.clone();
+    const endPos=new THREE.Vector3(
+        target.x+25,
+        target.y+12,
+        target.z+25
+    );
+
+    let t=0;
+
+    function animateCam(){
+
+        if(t<1){
+            t+=0.02;
+
+            camera.position.lerpVectors(startPos,endPos,t);
+            controls.target.lerp(target,0.08);
+
+            requestAnimationFrame(animateCam);
+        }
+    }
+
+    animateCam();
 }
 
 /* =========================
-   ANIMATION LOOP
+   LOOP
 ========================= */
 
 function animate(){
@@ -245,10 +317,10 @@ function animate(){
 
         planets.forEach(p=>{
             p.orbit.rotation.y += p.speed;
-            p.mesh.rotation.y += 0.01;
+            p.mesh.rotation.y += 0.005;
         });
 
-        moonOrbit.rotation.y += 0.03;
+        moonOrbit.rotation.y += 0.02;
     }
 
     controls.update();
@@ -262,7 +334,9 @@ animate();
 ========================= */
 
 window.addEventListener("resize",()=>{
-    camera.aspect = innerWidth/innerHeight;
+
+    camera.aspect=innerWidth/innerHeight;
     camera.updateProjectionMatrix();
+
     renderer.setSize(innerWidth,innerHeight);
 });
