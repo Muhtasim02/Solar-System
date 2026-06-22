@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solar System</title>
+
+<link rel="stylesheet" href="style.css">
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+
+<body>
+
+<!-- LEFT PANEL (PLANET LIST) -->
+<div id="planetList"></div>
+
+<!-- RIGHT PANEL (INFO BOX) -->
+<div id="infoBox">
+    <h2 id="planetName">Select a planet</h2>
+    <p id="planetData">Click a planet or select from list</p>
+</div>
+
+<script type="module" src="main.js"></script>
+
+</body>
+</html>
