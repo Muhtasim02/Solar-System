@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 /* ======================
-   BASIC SETUP
+   SETUP
 ====================== */
 
 const scene = new THREE.Scene();
@@ -24,40 +24,36 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
 /* ======================
-   LIGHTING (IMPORTANT)
+   LIGHTS
 ====================== */
 
-scene.add(new THREE.AmbientLight(0xffffff, 1.3));
+scene.add(new THREE.AmbientLight(0xffffff, 1.4));
 
-const sunLight = new THREE.PointLight(0xffffff, 5000, 5000);
+const sunLight = new THREE.PointLight(0xffffff, 4000, 5000);
 scene.add(sunLight);
 
 /* ======================
-   TEXTURE LOADER
+   LOADER
 ====================== */
 
 const loader = new THREE.TextureLoader();
 
-function loadTexture(path) {
-    const tex = loader.load(
-        path,
-        () => console.log("Loaded:", path),
+function tex(file) {
+    return loader.load(
+        file,
+        () => console.log("Loaded:", file),
         undefined,
-        () => console.log("FAILED:", path)
+        () => console.log("FAILED:", file)
     );
-    return tex;
 }
 
 /* ======================
-   UI ELEMENTS
+   UI
 ====================== */
 
 const planetList = document.getElementById("planetList");
 const planetName = document.getElementById("planetName");
 const planetData = document.getElementById("planetData");
-
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
 
 /* ======================
    PLANET INFO
@@ -81,7 +77,7 @@ const planetInfo = {
 const sun = new THREE.Mesh(
     new THREE.SphereGeometry(10, 64, 64),
     new THREE.MeshBasicMaterial({
-        map: loadTexture("textures/sun.jpg")
+        map: tex("sun.jpg")
     })
 );
 
@@ -94,7 +90,7 @@ scene.add(sun);
 const planets = [];
 
 /* ======================
-   CREATE PLANET FUNCTION
+   CREATE PLANET
 ====================== */
 
 function createPlanet(name, size, distance, texture, speed) {
@@ -105,7 +101,7 @@ function createPlanet(name, size, distance, texture, speed) {
     const mesh = new THREE.Mesh(
         new THREE.SphereGeometry(size, 64, 64),
         new THREE.MeshStandardMaterial({
-            map: loadTexture(texture)
+            map: tex(texture)
         })
     );
 
@@ -117,10 +113,10 @@ function createPlanet(name, size, distance, texture, speed) {
 
     planets.push({ mesh, orbit, speed });
 
-    /* UI BUTTON */
+    /* BUTTON */
     const btn = document.createElement("button");
-    btn.className = "planetBtn";
     btn.innerText = name;
+    btn.className = "planetBtn";
     btn.onclick = () => focusPlanet(mesh);
 
     planetList.appendChild(btn);
@@ -132,49 +128,43 @@ function createPlanet(name, size, distance, texture, speed) {
    PLANETS
 ====================== */
 
-createPlanet("Mercury", 1.5, 18, "textures/mercury.jpg", 0.04);
-createPlanet("Venus", 2.5, 28, "textures/venus.jpg", 0.02);
+createPlanet("Mercury", 1.5, 18, "mercury.jpg", 0.04);
+createPlanet("Venus", 2.5, 28, "venus.jpg", 0.02);
 
-const earth = createPlanet("Earth", 2.8, 40, "textures/earth.jpg", 0.01);
+const earth = createPlanet("Earth", 2.8, 40, "earth.jpg", 0.01);
 
-createPlanet("Mars", 2, 55, "textures/mars.jpg", 0.008);
-createPlanet("Jupiter", 6, 80, "textures/jupiter.jpg", 0.004);
+createPlanet("Mars", 2, 55, "mars.jpg", 0.008);
+createPlanet("Jupiter", 6, 80, "jupiter.jpg", 0.004);
 
 /* ======================
-   SATURN + RING (FIXED)
+   SATURN + RING
 ====================== */
 
-const saturn = createPlanet(
-    "Saturn",
-    5,
-    110,
-    "textures/saturn.jpg",
-    0.003
-);
+const saturn = createPlanet("Saturn", 5, 110, "saturn.jpg", 0.003);
 
-const saturnRingGeo = new THREE.RingGeometry(7, 12, 64);
+const ringGeo = new THREE.RingGeometry(7, 12, 64);
 
-const saturnRingMat = new THREE.MeshBasicMaterial({
-    map: loadTexture("textures/saturn_ring.png"),
-    side: THREE.DoubleSide,
+const ringMat = new THREE.MeshBasicMaterial({
+    map: tex("saturn_ring.png"),
     transparent: true,
+    side: THREE.DoubleSide,
     opacity: 0.9
 });
 
-const saturnRing = new THREE.Mesh(saturnRingGeo, saturnRingMat);
-
+const saturnRing = new THREE.Mesh(ringGeo, ringMat);
 saturnRing.rotation.x = Math.PI / 2;
+
 saturn.add(saturnRing);
 
 /* ======================
-   URANUS & NEPTUNE
+   OUTER PLANETS
 ====================== */
 
-createPlanet("Uranus", 4, 145, "textures/uranus.jpg", 0.002);
-createPlanet("Neptune", 4, 180, "textures/neptune.jpg", 0.001);
+createPlanet("Uranus", 4, 145, "uranus.jpg", 0.002);
+createPlanet("Neptune", 4, 180, "neptune.jpg", 0.001);
 
 /* ======================
-   MOON (EARTH)
+   MOON
 ====================== */
 
 const moonOrbit = new THREE.Object3D();
@@ -183,7 +173,7 @@ earth.add(moonOrbit);
 const moon = new THREE.Mesh(
     new THREE.SphereGeometry(0.8, 32, 32),
     new THREE.MeshStandardMaterial({
-        map: loadTexture("textures/moon.jpg")
+        map: tex("moon.jpg")
     })
 );
 
@@ -195,10 +185,10 @@ moonOrbit.add(moon);
 ====================== */
 
 const starGeo = new THREE.BufferGeometry();
-const starPos = [];
+const pos = [];
 
 for (let i = 0; i < 12000; i++) {
-    starPos.push(
+    pos.push(
         (Math.random() - 0.5) * 4000,
         (Math.random() - 0.5) * 4000,
         (Math.random() - 0.5) * 4000
@@ -207,17 +197,22 @@ for (let i = 0; i < 12000; i++) {
 
 starGeo.setAttribute(
     "position",
-    new THREE.Float32BufferAttribute(starPos, 3)
+    new THREE.Float32BufferAttribute(pos, 3)
 );
 
-scene.add(new THREE.Points(
-    starGeo,
-    new THREE.PointsMaterial({ size: 1 })
-));
+scene.add(
+    new THREE.Points(
+        starGeo,
+        new THREE.PointsMaterial({ size: 1 })
+    )
+);
 
 /* ======================
    CLICK SYSTEM
 ====================== */
+
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
 
 window.addEventListener("click", (e) => {
 
@@ -228,9 +223,7 @@ window.addEventListener("click", (e) => {
 
     const hits = raycaster.intersectObjects(planets.map(p => p.mesh));
 
-    if (hits.length) {
-        focusPlanet(hits[0].object);
-    }
+    if (hits.length) focusPlanet(hits[0].object);
 });
 
 /* ======================
@@ -245,8 +238,8 @@ function focusPlanet(mesh) {
 
     planetData.innerHTML = `
         Distance: ${mesh.userData.distance}<br>
-        Orbit Speed: ${mesh.userData.speed}<br>
-        Natural Satellites: ${planetInfo[name] || 0}
+        Speed: ${mesh.userData.speed}<br>
+        Moons: ${planetInfo[name] || 0}
     `;
 
     const pos = mesh.getWorldPosition(new THREE.Vector3());
@@ -256,7 +249,7 @@ function focusPlanet(mesh) {
 }
 
 /* ======================
-   ANIMATION LOOP
+   LOOP
 ====================== */
 
 function animate() {
@@ -281,7 +274,7 @@ animate();
 ====================== */
 
 window.addEventListener("resize", () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(innerWidth, innerHeight);
 });
