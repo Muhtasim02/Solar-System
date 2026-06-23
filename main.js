@@ -6,7 +6,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 ========================= */
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x000000, 0.002);
+scene.fog = new THREE.FogExp2(0x000000, 0.0018);
 
 /* =========================
    CAMERA
@@ -19,7 +19,7 @@ const camera = new THREE.PerspectiveCamera(
     5000
 );
 
-camera.position.set(0, 60, 160);
+camera.position.set(0, 70, 170);
 
 /* =========================
    RENDERER
@@ -36,15 +36,14 @@ document.body.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.dampingFactor = 0.05;
 
 /* =========================
-   LIGHTING
+   LIGHTS
 ========================= */
 
-scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+scene.add(new THREE.AmbientLight(0xffffff, 0.7));
 
-const sunLight = new THREE.PointLight(0xffffff, 5, 500);
+const sunLight = new THREE.PointLight(0xffffff, 4, 1000);
 scene.add(sunLight);
 
 /* =========================
@@ -52,10 +51,7 @@ scene.add(sunLight);
 ========================= */
 
 const loader = new THREE.TextureLoader();
-
-function tex(file){
-    return loader.load(file);
-}
+const tex = (f) => loader.load(f);
 
 /* =========================
    UI
@@ -74,7 +70,7 @@ let paused = false;
 let selectedPlanet = null;
 
 /* =========================
-   PLANET DATA
+   PLANET INFO
 ========================= */
 
 const planetInfo = {
@@ -89,7 +85,7 @@ const planetInfo = {
 };
 
 /* =========================
-   SUN (GLOW EFFECT)
+   SUN
 ========================= */
 
 const sun = new THREE.Mesh(
@@ -101,12 +97,27 @@ const sun = new THREE.Mesh(
 
 scene.add(sun);
 
-/* Sun glow light */
-const sunGlow = new THREE.PointLight(0xffaa00, 2, 800);
-scene.add(sunGlow);
+/* =========================
+   REAL TIME FUNCTION (KEY PART)
+========================= */
+
+function getTimeFactor(speed){
+
+    const now = new Date();
+
+    const seconds =
+        now.getUTCFullYear() * 31536000 +
+        now.getUTCMonth() * 2629746 +
+        now.getUTCDate() * 86400 +
+        now.getUTCHours() * 3600 +
+        now.getUTCMinutes() * 60 +
+        now.getUTCSeconds();
+
+    return seconds * speed;
+}
 
 /* =========================
-   ORBIT PATH (CINEMATIC)
+   ORBIT PATH
 ========================= */
 
 function createOrbit(radius, tilt=0){
@@ -115,12 +126,11 @@ function createOrbit(radius, tilt=0){
 
     for(let i=0;i<=256;i++){
 
-        const angle = (i/256)*Math.PI*2;
+        const a = (i/256)*Math.PI*2;
 
-        const x = Math.cos(angle)*radius;
-        const z = Math.sin(angle)*radius;
-
-        const y = Math.sin(tilt)*Math.sin(angle)*radius*0.12;
+        const x = Math.cos(a)*radius;
+        const z = Math.sin(a)*radius;
+        const y = Math.sin(a)*Math.sin(tilt)*radius*0.12;
 
         points.push(new THREE.Vector3(x,y,z));
     }
@@ -130,11 +140,10 @@ function createOrbit(radius, tilt=0){
     const mat = new THREE.LineBasicMaterial({
         color:0xffffff,
         transparent:true,
-        opacity:0.18
+        opacity:0.15
     });
 
-    const line = new THREE.Line(geo,mat);
-    scene.add(line);
+    scene.add(new THREE.Line(geo,mat));
 }
 
 /* =========================
@@ -157,15 +166,20 @@ function createPlanet(name,size,dist,texture,speed,tilt){
         })
     );
 
-    mesh.position.x = dist;
-    mesh.userData = {name,dist,speed};
+    /* INITIAL POSITION (based on current time) */
+    const angle = getTimeFactor(speed);
+
+    mesh.position.x = Math.cos(angle)*dist;
+    mesh.position.z = Math.sin(angle)*dist;
+
+    mesh.userData = {name,dist,speed,angle};
 
     orbit.add(mesh);
     planets.push({mesh,orbit,speed});
 
     const btn = document.createElement("button");
-    btn.innerText = name;
     btn.className = "planetBtn";
+    btn.innerText = name;
     btn.onclick = ()=>focusPlanet(mesh);
 
     planetList.appendChild(btn);
@@ -174,21 +188,21 @@ function createPlanet(name,size,dist,texture,speed,tilt){
 }
 
 /* =========================
-   CREATE SYSTEM
+   PLANETS
 ========================= */
 
-createPlanet("Mercury",1.5,18,"mercury.jpg",0.04,0.03);
-createPlanet("Venus",2.5,28,"venus.jpg",0.02,0.02);
+createPlanet("Mercury",1.5,18,"mercury.jpg",0.0000009,0.03);
+createPlanet("Venus",2.5,28,"venus.jpg",0.0000006,0.02);
 
-const earth = createPlanet("Earth",2.8,40,"earth.jpg",0.01,0.01);
+const earth = createPlanet("Earth",2.8,40,"earth.jpg",0.0000005,0.01);
 
-createPlanet("Mars",2,55,"mars.jpg",0.008,0.04);
-createPlanet("Jupiter",6,80,"jupiter.jpg",0.004,0.01);
+createPlanet("Mars",2,55,"mars.jpg",0.0000004,0.04);
+createPlanet("Jupiter",6,80,"jupiter.jpg",0.0000002,0.01);
 
-const saturn = createPlanet("Saturn",5,110,"saturn.jpg",0.003,0.05);
+const saturn = createPlanet("Saturn",5,110,"saturn.jpg",0.00000015,0.05);
 
-createPlanet("Uranus",4,145,"uranus.jpg",0.002,0.09);
-createPlanet("Neptune",4,180,"neptune.jpg",0.001,0.03);
+createPlanet("Uranus",4,145,"uranus.jpg",0.0000001,0.09);
+createPlanet("Neptune",4,180,"neptune.jpg",0.00000008,0.03);
 
 /* =========================
    SATURN RING
@@ -243,7 +257,7 @@ window.addEventListener("click",(e)=>{
 });
 
 /* =========================
-   CINEMATIC FOCUS ANIMATION
+   FOCUS SYSTEM
 ========================= */
 
 function focusPlanet(mesh){
@@ -256,7 +270,7 @@ function focusPlanet(mesh){
         paused=false;
 
         planetName.innerText="Solar System";
-        planetData.innerHTML="Explore the universe";
+        planetData.innerHTML="Live system active";
 
         infoBox.style.borderColor="rgba(255,255,255,0.2)";
         return;
@@ -272,41 +286,20 @@ function focusPlanet(mesh){
     planetData.innerHTML=`
         <b>Discovered:</b> ${info.d}<br><br>
         <b>Temperature:</b> ${info.t}<br><br>
-        <b>Year Length:</b> ${info.y}<br><br>
-        <b>Natural Satellites:</b> ${info.m}
+        <b>Year:</b> ${info.y}<br><br>
+        <b>Moons:</b> ${info.m}
     `;
 
     infoBox.style.borderColor=info.c;
 
-    const target=mesh.getWorldPosition(new THREE.Vector3());
+    const pos=mesh.getWorldPosition(new THREE.Vector3());
 
-    /* SMOOTH CAMERA MOVE */
-    const startPos=camera.position.clone();
-    const endPos=new THREE.Vector3(
-        target.x+25,
-        target.y+12,
-        target.z+25
-    );
-
-    let t=0;
-
-    function animateCam(){
-
-        if(t<1){
-            t+=0.02;
-
-            camera.position.lerpVectors(startPos,endPos,t);
-            controls.target.lerp(target,0.08);
-
-            requestAnimationFrame(animateCam);
-        }
-    }
-
-    animateCam();
+    camera.position.set(pos.x+25,pos.y+15,pos.z+25);
+    controls.target.copy(pos);
 }
 
 /* =========================
-   LOOP
+   LOOP (REAL TIME UPDATE)
 ========================= */
 
 function animate(){
@@ -316,11 +309,19 @@ function animate(){
     if(!paused){
 
         planets.forEach(p=>{
-            p.orbit.rotation.y += p.speed;
-            p.mesh.rotation.y += 0.005;
+
+            const m=p.mesh;
+            const d=m.userData.dist;
+
+            const angle=getTimeFactor(p.speed);
+
+            m.position.x=Math.cos(angle)*d;
+            m.position.z=Math.sin(angle)*d;
+
+            m.rotation.y+=0.002;
         });
 
-        moonOrbit.rotation.y += 0.02;
+        moonOrbit.rotation.y+=0.01;
     }
 
     controls.update();
