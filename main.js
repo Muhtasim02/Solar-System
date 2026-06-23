@@ -32,7 +32,7 @@ scene.add(new THREE.AmbientLight(0xffffff, 0.7));
 scene.add(new THREE.PointLight(0xffffff, 4, 1000));
 
 /* =========================
-   TEXTURE LOADER
+   TEXTURES
 ========================= */
 
 const loader = new THREE.TextureLoader();
@@ -55,18 +55,18 @@ let paused = false;
 let selected = null;
 
 /* =========================
-   REAL ORBIT DATA (SIMPLIFIED NASA MODEL)
+   REAL PLANET DATA
 ========================= */
 
 const planetsData = [
-{ name:"Mercury", a:0.39, e:0.206, P:88, size:1.5, tilt:0.03, color:"#aaa" },
-{ name:"Venus",   a:0.72, e:0.007, P:225, size:2.5, tilt:0.02, color:"#d4a373" },
-{ name:"Earth",   a:1.0,  e:0.017, P:365, size:2.8, tilt:0.01, color:"#4dabf7" },
-{ name:"Mars",    a:1.52, e:0.093, P:687, size:2,   tilt:0.04, color:"#ff6b4a" },
-{ name:"Jupiter", a:5.2,  e:0.048, P:4333,size:6,   tilt:0.01, color:"#f4a261" },
-{ name:"Saturn",  a:9.5,  e:0.054, P:10759,size:5,  tilt:0.05, color:"#ffd166" },
-{ name:"Uranus",  a:19.2, e:0.047, P:30687,size:4,  tilt:0.09, color:"#90e0ef" },
-{ name:"Neptune", a:30.1, e:0.009, P:60190,size:4,  tilt:0.03, color:"#4361ee" }
+{ name:"Mercury", a:0.39, P:88, size:1.5, tilt:0.03 },
+{ name:"Venus",   a:0.72, P:225, size:2.5, tilt:0.02 },
+{ name:"Earth",   a:1.0,  P:365, size:2.8, tilt:0.01 },
+{ name:"Mars",    a:1.52, P:687, size:2,   tilt:0.04 },
+{ name:"Jupiter", a:5.2,  P:4333,size:6,   tilt:0.01 },
+{ name:"Saturn",  a:9.5,  P:10759,size:5,  tilt:0.05 },
+{ name:"Uranus",  a:19.2, P:30687,size:4,  tilt:0.09 },
+{ name:"Neptune", a:30.1, P:60190,size:4,  tilt:0.03 }
 ];
 
 /* =========================
@@ -92,44 +92,32 @@ function createOrbit(radius, tilt){
 
         const a = (i/256)*Math.PI*2;
 
-        const x = Math.cos(a)*radius;
-        const z = Math.sin(a)*radius;
-        const y = Math.sin(a)*Math.sin(tilt)*radius*0.12;
-
-        points.push(new THREE.Vector3(x,y,z));
+        points.push(new THREE.Vector3(
+            Math.cos(a)*radius,
+            Math.sin(a)*Math.sin(tilt)*radius*0.12,
+            Math.sin(a)*radius
+        ));
     }
 
     const geo = new THREE.BufferGeometry().setFromPoints(points);
 
     const mat = new THREE.LineBasicMaterial({
         color:0xffffff,
-        transparent:true,
-        opacity:0.12
+        opacity:0.15,
+        transparent:true
     });
 
     scene.add(new THREE.Line(geo,mat));
 }
 
 /* =========================
-   REAL TIME KEPLER SNAPSHOT
+   REALISTIC TIME SYSTEM (FIXED)
 ========================= */
 
-function positionAtDate(p){
+const clock = new THREE.Clock();
 
-    const now = new Date();
-    const days = now.getTime() / (1000*60*60*24);
-
-    const meanMotion = (2*Math.PI)/p.P;
-
-    const M = (meanMotion * days) % (2*Math.PI);
-
-    const E = M; // simplified solver
-
-    const x = p.a * Math.cos(E) - p.e;
-    const z = p.a * Math.sin(E) * Math.sqrt(1 - p.e*p.e);
-
-    return { x, z };
-}
+/* THIS is the key fix */
+const timeScale = 0.00005;
 
 /* =========================
    PLANETS
@@ -153,21 +141,21 @@ function createPlanet(p){
         })
     );
 
-    /* TODAY SNAPSHOT POSITION */
-    const pos = positionAtDate(p);
+    /* initial angle */
+    p.angle = Math.random() * Math.PI * 2;
 
-    mesh.position.x = pos.x * 40;
-    mesh.position.z = pos.z * 40;
+    mesh.position.x = Math.cos(p.angle) * orbitRadius;
+    mesh.position.z = Math.sin(p.angle) * orbitRadius;
 
     mesh.userData = p;
 
     orbit.add(mesh);
-    planets.push({mesh,orbit,p});
+    planets.push({mesh, orbit, p});
 
     const btn = document.createElement("button");
-    btn.className = "planetBtn";
     btn.innerText = p.name;
-    btn.onclick = ()=>focusPlanet(mesh);
+    btn.className = "planetBtn";
+    btn.onclick = () => focusPlanet(mesh);
 
     planetList.appendChild(btn);
 }
@@ -210,8 +198,7 @@ function focusPlanet(mesh){
         paused = false;
 
         planetName.innerText = "Solar System";
-        planetData.innerHTML = "Live system running";
-        infoBox.style.borderColor = "rgba(255,255,255,0.2)";
+        planetData.innerHTML = "Running smoothly";
         return;
     }
 
@@ -219,14 +206,10 @@ function focusPlanet(mesh){
     paused = true;
 
     planetName.innerText = p.name;
-
     planetData.innerHTML = `
-        <b>Planet:</b> ${p.name}<br>
-        <b>Orbit Period:</b> ${p.P} days<br>
-        <b>Size:</b> ${p.size}
+        Planet: ${p.name}<br>
+        Orbit Period: ${p.P} days
     `;
-
-    infoBox.style.borderColor = p.color;
 
     const pos = mesh.getWorldPosition(new THREE.Vector3());
 
@@ -235,12 +218,14 @@ function focusPlanet(mesh){
 }
 
 /* =========================
-   ANIMATION LOOP
+   ANIMATION LOOP (FIXED MOTION)
 ========================= */
 
 function animate(){
 
     requestAnimationFrame(animate);
+
+    const delta = clock.getDelta();
 
     if(!paused){
 
@@ -248,14 +233,15 @@ function animate(){
 
             const p = obj.p;
             const mesh = obj.mesh;
+            const r = p.a * 40;
 
-            const orbitR = p.a * 40;
+            /* REAL MOTION FIX */
+            p.angle += timeScale * delta * (365 / p.P);
 
-            const now = new Date().getTime()/100000000;
-            const angle = now*(1/p.P)*10;
+            mesh.position.x = Math.cos(p.angle) * r;
+            mesh.position.z = Math.sin(p.angle) * r;
 
-            mesh.position.x = Math.cos(angle)*orbitR;
-            mesh.position.z = Math.sin(angle)*orbitR;
+            mesh.rotation.y += 0.002;
         });
     }
 
